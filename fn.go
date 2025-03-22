@@ -1,59 +1,45 @@
 package dify
 
 import (
+	"context"
 	"encoding/json"
-	"fmt"
+	"github.com/pkg/errors"
 	"io"
 	"net/http"
 	"strings"
 )
 
-func SendGetRequest(forConsole bool, dc *DifyClient, api string) (httpCode int, bodyText []byte, err error) {
-	req, err := http.NewRequest("GET", api, nil)
-	if err != nil {
-		return -1, nil, err
-	}
-
-	if forConsole {
-		setConsoleAuthorization(dc, req)
-	} else {
-		setAPIAuthorization(dc, req)
-	}
-
-	resp, err := dc.Client.Do(req)
-	if err != nil {
-		return -1, nil, err
-	}
-	defer resp.Body.Close()
-
-	bodyText, err = io.ReadAll(resp.Body)
-	return resp.StatusCode, bodyText, err
+func (cl *Client) sendGetRequest(ctx context.Context, forConsole bool, api string) (httpCode int, bodyText []byte, err error) {
+	return cl.doRequest(ctx, http.MethodGet, forConsole, api, nil)
 }
 
-func SendPostRequest(forConsole bool, dc *DifyClient, api string, postBody interface{}) (httpCode int, bodyText []byte, err error) {
+func (cl *Client) sendPostRequest(ctx context.Context, forConsole bool, api string, postBody any) (httpCode int, bodyText []byte, err error) {
 	var payload *strings.Reader
 	if postBody != nil {
 		buf, err := json.Marshal(postBody)
 		if err != nil {
-			return -1, nil, err
+			return 0, nil, err
 		}
 		payload = strings.NewReader(string(buf))
 	} else {
 		payload = nil
 	}
+	return cl.doRequest(ctx, http.MethodPost, forConsole, api, payload)
+}
 
-	req, err := http.NewRequest("POST", api, payload)
+func (cl *Client) doRequest(ctx context.Context, method string, forConsole bool, api string, body io.Reader) (httpCode int, bodyText []byte, err error) {
+	req, err := http.NewRequestWithContext(ctx, method, api, body)
 	if err != nil {
-		return -1, nil, err
+		return 0, nil, err
 	}
 
 	if forConsole {
-		setConsoleAuthorization(dc, req)
+		cl.setConsoleAuthorization(req)
 	} else {
-		setAPIAuthorization(dc, req)
+		cl.setAPIAuthorization(req)
 	}
 
-	resp, err := dc.Client.Do(req)
+	resp, err := cl.client.Do(req)
 	if err != nil {
 		return -1, nil, err
 	}
@@ -64,15 +50,7 @@ func SendPostRequest(forConsole bool, dc *DifyClient, api string, postBody inter
 }
 
 func CommonRiskForSendRequest(code int, err error) error {
-	if err != nil {
-		return err
-	}
-
-	if code != http.StatusOK {
-		return fmt.Errorf("status code: %d", code)
-	}
-
-	return nil
+	return CommonRiskForSendRequestWithCode(code, err, http.StatusOK)
 }
 
 func CommonRiskForSendRequestWithCode(code int, err error, targetCode int) error {
@@ -81,7 +59,7 @@ func CommonRiskForSendRequestWithCode(code int, err error, targetCode int) error
 	}
 
 	if code != targetCode {
-		return fmt.Errorf("status code: %d", code)
+		return errors.Errorf("status code: %d", code)
 	}
 
 	return nil

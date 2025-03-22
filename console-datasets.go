@@ -1,28 +1,30 @@
 package dify
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/pkg/errors"
 	"io"
 	"net/http"
 )
 
-func (dc *DifyClient) DeleteDatasets(datasets_id string) (ok bool, err error) {
+func (cl *Client) DeleteDatasets(datasets_id string) (ok bool, err error) {
 	if datasets_id == "" {
-		return false, fmt.Errorf("datasets_id is required")
+		return false, errors.Errorf("datasets_id is required")
 	}
 
-	api := dc.GetConsoleAPI(CONSOLE_API_DATASETS_DELETE)
-	api = UpdateAPIParam(api, CONSOLE_API_PARAM_DATASETS_ID, datasets_id)
+	api := cl.GetConsoleAPI(ConsoleApiDatasetsDelete)
+	api = UpdateAPIParam(api, ConsoleApiParamDatasetsId, datasets_id)
 
 	req, err := http.NewRequest("DELETE", api, nil)
 	if err != nil {
-		return false, fmt.Errorf("could not create a new request: %v", err)
+		return false, errors.Errorf("could not create a new request: %v", err)
 	}
-	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", dc.ConsoleToken))
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", cl.ConsoleToken))
 	req.Header.Set("Content-Type", "application/json")
 
-	resp, err := dc.Client.Do(req)
+	resp, err := cl.client.Do(req)
 	if err != nil {
 		return false, err
 	}
@@ -31,16 +33,18 @@ func (dc *DifyClient) DeleteDatasets(datasets_id string) (ok bool, err error) {
 	if resp.StatusCode != 204 {
 		bodyText, err := io.ReadAll(resp.Body)
 		if err != nil {
-			return false, fmt.Errorf("status code: %d, could not read the body", resp.StatusCode)
+			return false, errors.Errorf("status code: %d, could not read the body", resp.StatusCode)
 		}
-		return false, fmt.Errorf("status code: %d, %s", resp.StatusCode, bodyText)
+		return false, errors.Errorf("status code: %d, %s", resp.StatusCode, bodyText)
 	}
 
 	return true, nil
 }
 
 type CreateDatasetsPayload struct {
-	Name string `json:"name"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	// TODO
 }
 
 type CreateDatasetsResponse struct {
@@ -75,14 +79,10 @@ type CreateDatasetsResponse struct {
 	Tags []any `json:"tags"`
 }
 
-func (dc *DifyClient) CreateDatasets(datasets_name string) (result CreateDatasetsResponse, err error) {
-	payload := &CreateDatasetsPayload{
-		Name: datasets_name,
-	}
+func (cl *Client) CreateDatasets(ctx context.Context, payload CreateDatasetsPayload) (result CreateDatasetsResponse, err error) {
+	api := cl.GetConsoleAPI(ConsoleApiDatasetsCreate)
 
-	api := dc.GetConsoleAPI(CONSOLE_API_DATASETS_CREATE)
-
-	code, body, err := SendPostRequestToConsole(dc, api, payload)
+	code, body, err := cl.sendPostRequestToConsole(ctx, api, payload)
 
 	err = CommonRiskForSendRequestWithCode(code, err, http.StatusCreated)
 	if err != nil {
@@ -91,9 +91,14 @@ func (dc *DifyClient) CreateDatasets(datasets_name string) (result CreateDataset
 
 	err = json.Unmarshal(body, &result)
 	if err != nil {
-		return result, fmt.Errorf("failed to unmarshal the response: %v", err)
+		return result, errors.Wrap(err, "failed to unmarshal the response")
 	}
 	return result, nil
+}
+
+type ListDatasetsQuery struct {
+	Page  int `json:"page"`
+	Limit int `json:"limit"`
 }
 
 type ListDatasetsResponse struct {
@@ -129,18 +134,18 @@ type ListDatasetsModelConfigDetail struct {
 	} `json:"completion_params"`
 }
 
-func (dc *DifyClient) ListDatasets(page int, limit int) (result ListDatasetsResponse, err error) {
-	if page < 1 {
-		return result, fmt.Errorf("page should be greater than 0")
+func (cl *Client) ListDatasets(ctx context.Context, query ListDatasetsQuery) (result ListDatasetsResponse, err error) {
+	if query.Page < 1 {
+		return result, errors.Errorf("page should be greater than 0")
 	}
-	if limit < 1 {
-		return result, fmt.Errorf("limit should be greater than 0")
+	if query.Limit < 1 {
+		return result, errors.Errorf("limit should be greater than 0")
 	}
 
-	api := dc.GetConsoleAPI(CONSOLE_API_DATASETS_LIST)
-	api = fmt.Sprintf("%s?page=%d&limit=%d", api, page, limit)
+	api := cl.GetConsoleAPI(ConsoleApiDatasetsList)
+	api = fmt.Sprintf("%s?page=%d&limit=%d", api, query.Page, query.Limit)
 
-	code, body, err := SendGetRequestToConsole(dc, api)
+	code, body, err := cl.sendGetRequestToConsole(ctx, api)
 
 	err = CommonRiskForSendRequest(code, err)
 	if err != nil {
@@ -149,7 +154,7 @@ func (dc *DifyClient) ListDatasets(page int, limit int) (result ListDatasetsResp
 
 	err = json.Unmarshal(body, &result)
 	if err != nil {
-		return result, fmt.Errorf("failed to unmarshal the response: %v", err)
+		return result, errors.Wrap(err, "failed to unmarshal the response")
 	}
 	return result, nil
 }

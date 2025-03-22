@@ -1,14 +1,17 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"os"
 
-	dify "github.com/soulteary/dify-go-sdk"
+	"github.com/alioth-center/dify-go-sdk"
 )
 
 func main() {
+	ctx := context.Background()
+
 	APIKey := os.Getenv("DIFY_API_KEY")
 	if APIKey == "" {
 		fmt.Println("DIFY_API_KEY is required")
@@ -23,37 +26,37 @@ func main() {
 
 	ConsoleHost := os.Getenv("DIFY_CONSOLE_HOST")
 
-	client, err := dify.CreateDifyClient(dify.DifyClientConfig{Key: APIKey, Host: APIHost, ConsoleHost: ConsoleHost})
+	client, err := dify.NewClient(dify.ClientConfig{Key: APIKey, Host: APIHost, ConsoleHost: ConsoleHost})
 	if err != nil {
-		log.Fatalf("failed to create DifyClient: %v\n", err)
+		log.Fatalf("failed to create Client: %v\n", err)
 		return
 	}
 
-	metas, err := client.GetMeta()
+	metas, err := client.GetMeta(ctx)
 	if err != nil {
 		log.Fatalf("failed to get meta: %v\n", err)
 		return
 	}
 	fmt.Println(metas)
 
-	parametersResponse, err := client.GetParameters()
+	parametersResponse, err := client.GetParameters(ctx)
 	if err != nil {
 		log.Fatalf("failed to get parameters: %v\n", err)
 		return
 	}
 	fmt.Println(parametersResponse)
 
-	msgID := CompletionMessages(client)
-	FileUpload(client)
-	CompletionMessagesStop(client)
-	MessagesFeedbacks(client, msgID)
+	msgID := CompletionMessages(ctx, client)
+	//FileUpload(client)
+	CompletionMessagesStop(ctx, client)
+	MessagesFeedbacks(ctx, client, msgID)
 	// TextToAudio(client)
 
-	CONSOLE_USER := os.Getenv("DIFY_CONSOLE_USER")
-	CONSOLE_PASS := os.Getenv("DIFY_CONSOLE_PASS")
-	if CONSOLE_USER != "" && CONSOLE_PASS != "" {
+	ConsoleUser := os.Getenv("DIFY_CONSOLE_USER")
+	ConsolePass := os.Getenv("DIFY_CONSOLE_PASS")
+	if ConsoleUser != "" && ConsolePass != "" {
 		log.Println("Get Console Token")
-		token := GetUserToken(client, CONSOLE_USER, CONSOLE_PASS)
+		token := GetUserToken(ctx, client, ConsoleUser, ConsolePass)
 		if token == "" {
 			log.Fatalf("failed to get console token\n")
 		}
@@ -62,7 +65,9 @@ func main() {
 		// Create datasets
 		var datasetsID string
 		log.Println("Create datasets")
-		createResult, err := client.CreateDatasets("test datasets")
+		createResult, err := client.CreateDatasets(ctx, dify.CreateDatasetsPayload{
+			Name: "test datasets",
+		})
 		if err != nil {
 			log.Fatalf("failed to create datasets: %v\n", err)
 			return
@@ -72,7 +77,10 @@ func main() {
 
 		// List datasets
 		log.Println("List datasets")
-		ListResult, err := client.ListDatasets(1, 30)
+		ListResult, err := client.ListDatasets(ctx, dify.ListDatasetsQuery{
+			Page:  1,
+			Limit: 30,
+		})
 		if err != nil {
 			log.Fatalf("failed to list datasets: %v\n", err)
 			return
@@ -96,7 +104,7 @@ func main() {
 
 		// Get the list of rerank models
 		log.Println("List rerank models")
-		reRankModels, err := client.ListWorkspacesRerankModels()
+		reRankModels, err := client.ListWorkspacesRerankModels(ctx)
 		if err != nil {
 			log.Println("failed to list rerank models:", err)
 		} else {
@@ -109,39 +117,38 @@ func main() {
 			log.Fatalf("failed to create file: %v\n", err)
 			return
 		}
-		result, err := client.DatasetsFileUpload("testfile-for-dify-database.txt", "testfile-for-dify-database.txt")
-		if err != nil {
-			log.Fatalf("failed to upload file to datasets: %v\n", err)
-			return
-		}
-		fileID := result.ID
-		log.Println(result)
+		//result, err := client.DatasetsFileUpload("testfile-for-dify-database.txt", "testfile-for-dify-database.txt")
+		//if err != nil {
+		//	log.Fatalf("failed to upload file to datasets: %v\n", err)
+		//	return
+		//}
+		//fileID := result.ID
+		//log.Println(result)
 
-		initResult, err := client.InitDatasetsByUploadFile([]string{fileID})
-		if err != nil {
-			log.Fatalf("failed to init datasets by upload file: %v\n", err)
-			return
-		}
-		log.Println(initResult)
+		//initResult, err := client.InitDatasetsByUploadFile(ctx, []string{fileID})
+		//if err != nil {
+		//	log.Fatalf("failed to init datasets by upload file: %v\n", err)
+		//	return
+		//}
+		//log.Println(initResult)
 
-		initStatus, err := client.InitDatasetsIndexingStatus(initResult.Dataset.ID)
-		if err != nil {
-			log.Fatalf("failed to get init datasets indexing status: %v\n", err)
-			return
-		}
-		log.Println(initStatus)
+		//initStatus, err := client.InitDatasetsIndexingStatus(initResult.Dataset.ID)
+		//if err != nil {
+		//	log.Fatalf("failed to get init datasets indexing status: %v\n", err)
+		//	return
+		//}
+		//log.Println(initStatus)
 	}
 }
 
-func CompletionMessages(client *dify.DifyClient) (messageID string) {
-	payload, err := dify.PrepareCompletionPayload(map[string]interface{}{"query": "hey"})
-	if err != nil {
-		log.Fatalf("failed to prepare payload: %v\n", err)
-		return
-	}
-
+func CompletionMessages(ctx context.Context, client *dify.Client) (messageID string) {
 	// normal response
-	completionMessagesResponse, err := client.CompletionMessages(payload, "", nil)
+	// TODO
+	completionMessagesResponse, err := client.CompletionMessages(ctx, dify.CompletionMessagesPayload{
+		Inputs: map[string]any{
+			"query": "hey",
+		},
+	})
 	if err != nil {
 		log.Fatalf("failed to get completion messages: %v\n", err)
 		return
@@ -150,7 +157,11 @@ func CompletionMessages(client *dify.DifyClient) (messageID string) {
 	fmt.Println()
 
 	// streaming response
-	completionMessagesStreamingResponse, err := client.CompletionMessagesStreaming(payload, "", nil)
+	completionMessagesStreamingResponse, err := client.CompletionMessagesStreaming(ctx, dify.CompletionMessagesPayload{
+		Inputs: map[string]any{
+			"query": "hey",
+		},
+	})
 	if err != nil {
 		log.Fatalf("failed to get completion messages: %v\n", err)
 		return
@@ -161,18 +172,20 @@ func CompletionMessages(client *dify.DifyClient) (messageID string) {
 	return completionMessagesResponse.MessageID
 }
 
-func FileUpload(client *dify.DifyClient) {
-	fileUploadResponse, err := client.FileUpload("./README.md", "readme.md")
-	if err != nil {
-		log.Fatalf("failed to upload file: %v\n", err)
-		return
-	}
-	fmt.Println(fileUploadResponse)
-	fmt.Println()
-}
+// TODO
+//func FileUpload(client *dify.Client) {
+//	fileUploadResponse, err := client.FileUpload("./README.md", "readme.md")
+//	if err != nil {
+//		log.Fatalf("failed to upload file: %v\n", err)
+//		return
+//	}
+//	fmt.Println(fileUploadResponse)
+//	fmt.Println()
+//}
 
-func CompletionMessagesStop(client *dify.DifyClient) {
-	completionMessagesStopResponse, err := client.CompletionMessagesStop("0d2bd315-d4de-476f-ad5e-faaa00d571ea")
+func CompletionMessagesStop(ctx context.Context, client *dify.Client) {
+	completionMessagesStopResponse, err := client.CompletionMessagesStop(ctx, "0d2bd315-d4de-476f-ad5e-faaa00d571ea",
+		dify.CompletionMessagesStopPayload{})
 	if err != nil {
 		log.Fatalf("failed to stop completion messages: %v\n", err)
 		return
@@ -181,8 +194,10 @@ func CompletionMessagesStop(client *dify.DifyClient) {
 	fmt.Println()
 }
 
-func MessagesFeedbacks(client *dify.DifyClient, messageID string) {
-	messagesFeedbacksResponse, err := client.MessagesFeedbacks(messageID, "like")
+func MessagesFeedbacks(ctx context.Context, client *dify.Client, messageID string) {
+	messagesFeedbacksResponse, err := client.MessagesFeedbacks(ctx, messageID, dify.MessagesFeedbacksPayload{
+		Rating: "like",
+	})
 	if err != nil {
 		log.Fatalf("failed to get messages feedbacks: %v\n", err)
 		return
@@ -191,26 +206,26 @@ func MessagesFeedbacks(client *dify.DifyClient, messageID string) {
 	fmt.Println()
 }
 
-func TextToAudio(client *dify.DifyClient) {
-	textToAudioResponse, err := client.TextToAudio("hello world")
-	if err != nil {
-		log.Fatalf("failed to get text to audio: %v\n", err)
-		return
-	}
-	fmt.Println(textToAudioResponse)
-	fmt.Println()
+//func TextToAudio(client *dify.Client) {
+//	textToAudioResponse, err := client.TextToAudio("hello world")
+//	if err != nil {
+//		log.Fatalf("failed to get text to audio: %v\n", err)
+//		return
+//	}
+//	fmt.Println(textToAudioResponse)
+//	fmt.Println()
+//
+//	textToAudioStreamingResponse, err := client.TextToAudioStreaming("hello world")
+//	if err != nil {
+//		log.Fatalf("failed to get text to audio streaming: %v\n", err)
+//		return
+//	}
+//	fmt.Println(textToAudioStreamingResponse)
+//	fmt.Println()
+//}
 
-	textToAudioStreamingResponse, err := client.TextToAudioStreaming("hello world")
-	if err != nil {
-		log.Fatalf("failed to get text to audio streaming: %v\n", err)
-		return
-	}
-	fmt.Println(textToAudioStreamingResponse)
-	fmt.Println()
-}
-
-func GetUserToken(client *dify.DifyClient, email, password string) string {
-	result, err := client.UserLogin(email, password)
+func GetUserToken(ctx context.Context, client *dify.Client, email, password string) string {
+	result, err := client.UserLogin(ctx, email, password)
 	if err != nil {
 		log.Fatalf("failed to login: %v\n", err)
 		return ""

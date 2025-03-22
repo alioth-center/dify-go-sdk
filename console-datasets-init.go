@@ -1,8 +1,10 @@
 package dify
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/pkg/errors"
 )
 
 type InitDatasetsPayload struct {
@@ -90,7 +92,7 @@ type InitDatasetsResponseDatasetDocument struct {
 	DocForm              string `json:"doc_form"`
 }
 
-func (dc *DifyClient) InitDatasetsByUploadFile(datasets_ids []string) (result InitDatasetsResponse, err error) {
+func (cl *Client) InitDatasetsByUploadFile(ctx context.Context, datasetsIds []string) (result InitDatasetsResponse, err error) {
 	payload := &InitDatasetsPayload{
 		DocForm:           "text_model",
 		DocLanguage:       "Chinese",
@@ -114,15 +116,15 @@ func (dc *DifyClient) InitDatasetsByUploadFile(datasets_ids []string) (result In
 			InfoList: InitDatasetsPayloadDataSourceInfoList{
 				DataSourceType: "upload_file",
 				FileInfoList: InitDatasetsPayloadDataSourceFileInfoList{
-					FileIds: datasets_ids,
+					FileIds: datasetsIds,
 				},
 			},
 		},
 	}
 
-	api := dc.GetConsoleAPI(CONSOLE_API_DATASETS_INIT)
+	api := cl.GetConsoleAPI(ConsoleApiDatasetsInit)
 
-	code, body, err := SendPostRequestToConsole(dc, api, payload)
+	code, body, err := cl.sendPostRequestToConsole(ctx, api, payload)
 
 	err = CommonRiskForSendRequest(code, err)
 	if err != nil {
@@ -132,7 +134,7 @@ func (dc *DifyClient) InitDatasetsByUploadFile(datasets_ids []string) (result In
 
 	err = json.Unmarshal(body, &result)
 	if err != nil {
-		return result, fmt.Errorf("failed to unmarshal the response: %v", err)
+		return result, errors.Wrap(err, "failed to unmarshal the response")
 	}
 	return result, nil
 }
@@ -156,11 +158,11 @@ type InitDatasetsIndexingStatusData struct {
 	TotalSegments        int    `json:"total_segments"`
 }
 
-func (dc *DifyClient) InitDatasetsIndexingStatus(datasets_id string) (result InitDatasetsIndexingStatusResponse, err error) {
-	api := dc.GetConsoleAPI(CONSOLE_API_DATASETS_INIT_STATUS)
-	api = UpdateAPIParam(api, CONSOLE_API_PARAM_DATASETS_ID, datasets_id)
+func (cl *Client) InitDatasetsIndexingStatus(ctx context.Context, datasetsId string) (result InitDatasetsIndexingStatusResponse, err error) {
+	api := cl.GetConsoleAPI(ConsoleApiDatasetsInitStatus)
+	api = UpdateAPIParam(api, ConsoleApiParamDatasetsId, datasetsId)
 
-	code, body, err := SendGetRequestToConsole(dc, api)
+	code, body, err := cl.sendGetRequestToConsole(ctx, api)
 
 	err = CommonRiskForSendRequest(code, err)
 	if err != nil {
@@ -169,7 +171,7 @@ func (dc *DifyClient) InitDatasetsIndexingStatus(datasets_id string) (result Ini
 
 	err = json.Unmarshal(body, &result)
 	if err != nil {
-		return result, fmt.Errorf("failed to unmarshal the response: %v", err)
+		return result, errors.Wrap(err, "failed to unmarshal the response")
 	}
 	return result, nil
 }

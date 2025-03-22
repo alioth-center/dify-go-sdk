@@ -1,8 +1,9 @@
 package dify
 
 import (
+	"context"
 	"encoding/json"
-	"fmt"
+	"github.com/pkg/errors"
 )
 
 type GetMetaResponse struct {
@@ -15,9 +16,9 @@ type GetMetaResponse struct {
 	} `json:"tool_icons"`
 }
 
-func (dc *DifyClient) GetMeta() (result GetMetaResponse, err error) {
-	api := dc.GetAPI(API_META)
-	code, body, err := SendGetRequestToAPI(dc, api)
+func (cl *Client) GetMeta(ctx context.Context) (result GetMetaResponse, err error) {
+	api := cl.GetAPI(ApiMeta)
+	code, body, err := cl.sendGetRequestToAPI(ctx, api)
 
 	err = CommonRiskForSendRequest(code, err)
 	if err != nil {
@@ -26,7 +27,7 @@ func (dc *DifyClient) GetMeta() (result GetMetaResponse, err error) {
 
 	err = json.Unmarshal(body, &result)
 	if err != nil {
-		return result, fmt.Errorf("failed to unmarshal the response: %v", err)
+		return result, errors.Wrap(err, "failed to unmarshal the response")
 	}
 	return result, nil
 }

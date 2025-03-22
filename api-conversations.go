@@ -2,11 +2,19 @@ package dify
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
-	"fmt"
+	"github.com/pkg/errors"
 	"io"
 	"net/http"
 )
+
+type ConversationsQuery struct {
+	User   string `json:"user"`
+	LastId string `json:"last_id"`
+	Limit  int    `json:"limit"`
+	SortBy string `json:"sort_by"`
+}
 
 type ConversationsResponse struct {
 	Limit   int  `json:"limit"`
@@ -23,22 +31,11 @@ type ConversationsResponse struct {
 	} `json:"data"`
 }
 
-func (dc *DifyClient) Conversations(last_id string, limit int) (result ConversationsResponse, err error) {
-	payloadLimit := ""
-	if limit <= 0 {
-		limit = 20
-	}
-	payloadLimit = fmt.Sprintf("%d", limit)
+func (cl *Client) Conversations(ctx context.Context, query ConversationsQuery) (result ConversationsResponse, err error) {
+	api := cl.GetAPI(ApiConversations)
 
-	payloadBody := map[string]string{
-		"user":    dc.User,
-		"last_id": last_id,
-		"limit":   payloadLimit,
-	}
-
-	api := dc.GetAPI(API_CONVERSATIONS)
-
-	code, body, err := SendPostRequestToAPI(dc, api, payloadBody)
+	// TODO
+	code, body, err := cl.sendGetRequest(ctx, false, api)
 
 	err = CommonRiskForSendRequest(code, err)
 	if err != nil {
@@ -47,50 +44,50 @@ func (dc *DifyClient) Conversations(last_id string, limit int) (result Conversat
 
 	err = json.Unmarshal(body, &result)
 	if err != nil {
-		return result, fmt.Errorf("failed to unmarshal the response: %v", err)
+		return result, errors.Wrap(err, "failed to unmarshal the response")
 	}
 	return result, nil
+}
+
+type DeleteConversationsPayload struct {
+	User string `json:"user"`
 }
 
 type DeleteConversationsResponse struct {
 	Result string `json:"result"`
 }
 
-func (dc *DifyClient) DeleteConversation(conversation_id string) (result DeleteConversationsResponse, err error) {
-	if conversation_id == "" {
-		return result, fmt.Errorf("conversation_id is required")
+func (cl *Client) DeleteConversation(ctx context.Context, conversationId string, payload DeleteConversationsPayload) (result DeleteConversationsResponse, err error) {
+	if conversationId == "" {
+		return result, errors.Errorf("conversation_id is required")
 	}
 
-	payloadBody := map[string]string{
-		"user": dc.User,
-	}
+	api := cl.GetAPI(ApiConversationsDelete)
+	api = UpdateAPIParam(api, ApiParamConversationId, conversationId)
 
-	api := dc.GetAPI(API_CONVERSATIONS_DELETE)
-	api = UpdateAPIParam(api, API_PARAM_CONVERSATION_ID, conversation_id)
-
-	buf, err := json.Marshal(payloadBody)
+	buf, err := json.Marshal(payload)
 	if err != nil {
 		return result, err
 	}
-	req, err := http.NewRequest("DELETE", api, bytes.NewBuffer(buf))
+	req, err := http.NewRequest(http.MethodDelete, api, bytes.NewBuffer(buf))
 	if err != nil {
-		return result, fmt.Errorf("could not create a new request: %v", err)
+		return result, errors.Errorf("could not create a new request: %v", err)
 	}
-	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", dc.Key))
+	req.Header.Set("Authorization", "Bearer "+cl.ApiKey)
 	req.Header.Set("Content-Type", "application/json")
 
-	resp, err := dc.Client.Do(req)
+	resp, err := cl.client.Do(req)
 	if err != nil {
 		return result, err
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != 200 {
+	if resp.StatusCode != http.StatusOK {
 		bodyText, err := io.ReadAll(resp.Body)
 		if err != nil {
-			return result, fmt.Errorf("status code: %d, could not read the body", resp.StatusCode)
+			return result, errors.Errorf("status code: %d, could not read the body", resp.StatusCode)
 		}
-		return result, fmt.Errorf("status code: %d, %s", resp.StatusCode, bodyText)
+		return result, errors.Errorf("status code: %d, %s", resp.StatusCode, bodyText)
 	}
 
 	bodyText, err := io.ReadAll(resp.Body)
@@ -100,28 +97,28 @@ func (dc *DifyClient) DeleteConversation(conversation_id string) (result DeleteC
 
 	err = json.Unmarshal(bodyText, &result)
 	if err != nil {
-		return result, fmt.Errorf("failed to unmarshal the response: %v", err)
+		return result, errors.Wrap(err, "failed to unmarshal the response")
 	}
 	return result, nil
+}
+
+type RenameConversationsPayload struct {
+	User string `json:"user"`
 }
 
 type RenameConversationsResponse struct {
 	Result string `json:"result"`
 }
 
-func (dc *DifyClient) RenameConversation(conversation_id string) (result RenameConversationsResponse, err error) {
-	if conversation_id == "" {
-		return result, fmt.Errorf("conversation_id is required")
+func (cl *Client) RenameConversation(ctx context.Context, conversationId string, payload RenameConversationsPayload) (result RenameConversationsResponse, err error) {
+	if conversationId == "" {
+		return result, errors.Errorf("conversation_id is required")
 	}
 
-	payload := map[string]string{
-		"user": dc.User,
-	}
+	api := cl.GetAPI(ApiConversationsRename)
+	api = UpdateAPIParam(api, ApiParamConversationId, conversationId)
 
-	api := dc.GetAPI(API_CONVERSATIONS_RENAME)
-	api = UpdateAPIParam(api, API_PARAM_CONVERSATION_ID, conversation_id)
-
-	code, body, err := SendPostRequestToAPI(dc, api, payload)
+	code, body, err := cl.sendPostRequestToAPI(ctx, api, payload)
 
 	err = CommonRiskForSendRequest(code, err)
 	if err != nil {
@@ -130,7 +127,7 @@ func (dc *DifyClient) RenameConversation(conversation_id string) (result RenameC
 
 	err = json.Unmarshal(body, &result)
 	if err != nil {
-		return result, fmt.Errorf("failed to unmarshal the response: %v", err)
+		return result, errors.Wrap(err, "failed to unmarshal the response")
 	}
 	return result, nil
 }

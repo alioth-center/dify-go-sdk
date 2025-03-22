@@ -1,9 +1,17 @@
 package dify
 
 import (
+	"context"
 	"encoding/json"
-	"fmt"
+	"github.com/pkg/errors"
 )
+
+type MessagesQuery struct {
+	ConversationId string `json:"conversation_id"`
+	User           string `json:"user"`
+	FirstId        string `json:"first_id"`
+	Limit          int    `json:"limit"`
+}
 
 type MessagesResponse struct {
 	Limit   int  `json:"limit"`
@@ -33,19 +41,15 @@ type MessagesResponse struct {
 	} `json:"data"`
 }
 
-func (dc *DifyClient) Messages(conversation_id string) (result MessagesResponse, err error) {
-	if conversation_id == "" {
-		return result, fmt.Errorf("conversation_id is required")
+func (cl *Client) Messages(ctx context.Context, query MessagesQuery) (result MessagesResponse, err error) {
+	// TODO
+	if query.ConversationId == "" {
+		return result, errors.New("conversation_id is required")
 	}
 
-	payloadBody := map[string]string{
-		"user":            dc.User,
-		"conversation_id": conversation_id,
-	}
+	api := cl.GetAPI(ApiMessages)
 
-	api := dc.GetAPI(API_MESSAGES)
-
-	code, body, err := SendPostRequestToAPI(dc, api, payloadBody)
+	code, body, err := cl.sendGetRequest(ctx, false, api)
 
 	err = CommonRiskForSendRequest(code, err)
 	if err != nil {
@@ -54,7 +58,7 @@ func (dc *DifyClient) Messages(conversation_id string) (result MessagesResponse,
 
 	err = json.Unmarshal(body, &result)
 	if err != nil {
-		return result, fmt.Errorf("failed to unmarshal the response: %v", err)
+		return result, errors.Wrap(err, "failed to unmarshal the response")
 	}
 	return result, nil
 }

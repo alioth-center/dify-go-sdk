@@ -1,15 +1,20 @@
 package dify
 
 import (
+	"context"
 	"encoding/json"
-	"fmt"
+	"github.com/pkg/errors"
 )
 
 type CompletionMessagesPayload struct {
-	Inputs         any    `json:"inputs"`
-	ResponseMode   string `json:"response_mode,omitempty"`
-	User           string `json:"user"`
-	ConversationID string `json:"conversation_id,omitempty"`
+	Inputs         map[string]any `json:"inputs"`
+	User           string         `json:"user"`
+	ConversationID string         `json:"conversation_id,omitempty"`
+}
+
+type completionMessagesPayloadWithResponseMode struct {
+	CompletionMessagesPayload
+	ResponseMode EnumResponseMode `json:"response_mode,omitempty"`
 }
 
 type CompletionMessagesResponse struct {
@@ -23,42 +28,17 @@ type CompletionMessagesResponse struct {
 	CreatedAt int    `json:"created_at"`
 }
 
-func PrepareCompletionPayload(payload map[string]interface{}) (string, error) {
-	jsonData, err := json.Marshal(payload)
-	if err != nil {
-		return "", err
-	}
-	return string(jsonData), nil
-}
-
-func (dc *DifyClient) CompletionMessages(inputs string, conversation_id string, files []any) (result CompletionMessagesResponse, err error) {
-	var payload CompletionMessagesPayload
-
-	if len(inputs) == 0 {
-		return result, fmt.Errorf("inputs is required")
-	} else {
-		var tryDecode map[string]interface{}
-		err := json.Unmarshal([]byte(inputs), &tryDecode)
-		if err != nil {
-			return result, fmt.Errorf("inputs should be a valid JSON string")
-		}
-		payload.Inputs = tryDecode
+func (cl *Client) CompletionMessages(ctx context.Context, payload CompletionMessagesPayload) (result CompletionMessagesResponse, err error) {
+	if len(payload.Inputs) == 0 {
+		payload.Inputs = make(map[string]any)
 	}
 
-	payload.ResponseMode = RESPONSE_MODE_BLOCKING
-	payload.User = dc.User
-
-	if conversation_id != "" {
-		payload.ConversationID = conversation_id
+	request := completionMessagesPayloadWithResponseMode{
+		CompletionMessagesPayload: payload,
+		ResponseMode:              ResponseModeBlocking,
 	}
-
-	if len(files) > 0 {
-		// TODO TBD
-		return result, fmt.Errorf("files are not supported")
-	}
-
-	api := dc.GetAPI(API_COMPLETION_MESSAGES)
-	code, body, err := SendPostRequestToAPI(dc, api, payload)
+	api := cl.GetAPI(ApiCompletionMessages)
+	code, body, err := cl.sendPostRequestToAPI(ctx, api, request)
 
 	err = CommonRiskForSendRequest(code, err)
 	if err != nil {
@@ -67,48 +47,28 @@ func (dc *DifyClient) CompletionMessages(inputs string, conversation_id string, 
 
 	err = json.Unmarshal(body, &result)
 	if err != nil {
-		return result, fmt.Errorf("failed to unmarshal the response: %v", err)
+		return result, errors.Wrap(err, "failed to unmarshal the response")
 	}
 	return result, nil
 }
 
-func (dc *DifyClient) CompletionMessagesStreaming(inputs string, conversation_id string, files []any) (result string, err error) {
-	var payload CompletionMessagesPayload
-
-	if len(inputs) == 0 {
-		return "", fmt.Errorf("inputs is required")
-	} else {
-		var tryDecode map[string]interface{}
-		err := json.Unmarshal([]byte(inputs), &tryDecode)
-		if err != nil {
-			return "", fmt.Errorf("inputs should be a valid JSON string")
-		}
-		payload.Inputs = tryDecode
+func (cl *Client) CompletionMessagesStreaming(ctx context.Context, payload CompletionMessagesPayload) (result string, err error) {
+	if len(payload.Inputs) == 0 {
+		payload.Inputs = make(map[string]any)
 	}
 
-	payload.ResponseMode = RESPONSE_MODE_STREAMING
-	payload.User = dc.User
-
-	if conversation_id != "" {
-		payload.ConversationID = conversation_id
+	request := completionMessagesPayloadWithResponseMode{
+		CompletionMessagesPayload: payload,
+		ResponseMode:              ResponseModeStreaming,
 	}
-
-	if len(files) > 0 {
-		// TODO TBD
-		return "", fmt.Errorf("files are not supported")
-	}
-
-	api := dc.GetAPI(API_COMPLETION_MESSAGES)
-	code, body, err := SendPostRequestToAPI(dc, api, payload)
+	api := cl.GetAPI(ApiCompletionMessages)
+	code, body, err := cl.sendPostRequestToAPI(ctx, api, request)
 
 	err = CommonRiskForSendRequest(code, err)
 	if err != nil {
 		return result, err
 	}
 
-	// if !strings.Contains(resp.Header.Get("Content-Type"), "text/event-stream") {
-	// 	return "", fmt.Errorf("response is not a streaming response")
-	// }
-
+	// TODO
 	return string(body), nil
 }

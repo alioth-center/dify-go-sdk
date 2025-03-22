@@ -2,6 +2,8 @@
 
 Golang SDK for [langgenius/dify](https://github.com/langgenius/dify) .
 
+## <span style="color:red">Beta version, some BREAK changes may occurred.</span>
+
 ## Quick Start
 
 ```bash

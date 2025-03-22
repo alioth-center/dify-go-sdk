@@ -1,8 +1,9 @@
 package dify
 
 import (
+	"context"
 	"encoding/json"
-	"fmt"
+	"github.com/pkg/errors"
 )
 
 type GetParametersResponse struct {
@@ -54,9 +55,9 @@ type GetParametersResponse struct {
 	} `json:"system_parameters"`
 }
 
-func (dc *DifyClient) GetParameters() (result GetParametersResponse, err error) {
-	api := dc.GetAPI(API_PARAMETERS)
-	code, body, err := SendGetRequestToAPI(dc, api)
+func (cl *Client) GetParameters(ctx context.Context) (result GetParametersResponse, err error) {
+	api := cl.GetAPI(ApiParameters)
+	code, body, err := cl.sendGetRequestToAPI(ctx, api)
 
 	err = CommonRiskForSendRequest(code, err)
 	if err != nil {
@@ -65,7 +66,7 @@ func (dc *DifyClient) GetParameters() (result GetParametersResponse, err error) 
 
 	err = json.Unmarshal(body, &result)
 	if err != nil {
-		return result, fmt.Errorf("failed to unmarshal the response: %v", err)
+		return result, errors.Wrap(err, "failed to unmarshal the response")
 	}
 	return result, nil
 }

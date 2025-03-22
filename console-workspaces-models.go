@@ -3,8 +3,9 @@ package dify
 // https://dify.lab.io/console/api/workspaces/current/models/model-types/rerank
 
 import (
+	"context"
 	"encoding/json"
-	"fmt"
+	"github.com/pkg/errors"
 )
 
 type ListWorkspacesRerankModelsResponse struct {
@@ -45,10 +46,10 @@ type ListWorkspacesRerankModel struct {
 	Status     string `json:"status"`
 }
 
-func (dc *DifyClient) ListWorkspacesRerankModels() (result ListWorkspacesRerankModelsResponse, err error) {
-	api := dc.GetConsoleAPI(CONSOLE_API_WORKSPACES_RERANK_MODEL)
+func (cl *Client) ListWorkspacesRerankModels(ctx context.Context) (result ListWorkspacesRerankModelsResponse, err error) {
+	api := cl.GetConsoleAPI(ConsoleApiWorkspacesRerankModel)
 
-	code, body, err := SendGetRequestToConsole(dc, api)
+	code, body, err := cl.sendGetRequestToConsole(ctx, api)
 
 	err = CommonRiskForSendRequest(code, err)
 	if err != nil {
@@ -57,7 +58,7 @@ func (dc *DifyClient) ListWorkspacesRerankModels() (result ListWorkspacesRerankM
 
 	err = json.Unmarshal(body, &result)
 	if err != nil {
-		return result, fmt.Errorf("failed to unmarshal the response: %v", err)
+		return result, errors.Wrap(err, "failed to unmarshal the response")
 	}
 	return result, nil
 }
@@ -66,10 +67,10 @@ type GetCurrentWorkspaceRerankDefaultModelResponse struct {
 	Data any `json:"data"`
 }
 
-func (dc *DifyClient) GetCurrentWorkspaceRerankDefaultModel() (result GetCurrentWorkspaceRerankDefaultModelResponse, err error) {
-	api := dc.GetConsoleAPI(CONSOLE_API_CURRENT_WORKSPACE_RERANK_MODEL)
+func (cl *Client) GetCurrentWorkspaceRerankDefaultModel(ctx context.Context) (result GetCurrentWorkspaceRerankDefaultModelResponse, err error) {
+	api := cl.GetConsoleAPI(ConsoleApiCurrentWorkspaceRerankModel)
 
-	code, body, err := SendGetRequestToConsole(dc, api)
+	code, body, err := cl.sendGetRequestToConsole(ctx, api)
 
 	err = CommonRiskForSendRequest(code, err)
 	if err != nil {
@@ -78,7 +79,7 @@ func (dc *DifyClient) GetCurrentWorkspaceRerankDefaultModel() (result GetCurrent
 
 	err = json.Unmarshal(body, &result)
 	if err != nil {
-		return result, fmt.Errorf("failed to unmarshal the response: %v", err)
+		return result, errors.Wrap(err, "failed to unmarshal the response")
 	}
 	return result, nil
 }

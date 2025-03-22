@@ -1,19 +1,19 @@
 package dify
 
 import (
-	"fmt"
+	"context"
 	"net/http"
 )
 
-func setConsoleAuthorization(dc *DifyClient, req *http.Request) {
-	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", dc.ConsoleToken))
+func (cl *Client) setConsoleAuthorization(req *http.Request) {
+	req.Header.Set("Authorization", "Bearer "+cl.ConsoleToken)
 	req.Header.Set("Content-Type", "application/json")
 }
 
-func SendGetRequestToConsole(dc *DifyClient, api string) (httpCode int, bodyText []byte, err error) {
-	return SendGetRequest(true, dc, api)
+func (cl *Client) sendGetRequestToConsole(ctx context.Context, api string) (httpCode int, bodyText []byte, err error) {
+	return cl.sendGetRequest(ctx, true, api)
 }
 
-func SendPostRequestToConsole(dc *DifyClient, api string, postBody interface{}) (httpCode int, bodyText []byte, err error) {
-	return SendPostRequest(true, dc, api, postBody)
+func (cl *Client) sendPostRequestToConsole(ctx context.Context, api string, postBody any) (httpCode int, bodyText []byte, err error) {
+	return cl.sendPostRequest(ctx, true, api, postBody)
 }

@@ -1,8 +1,9 @@
 package dify
 
 import (
+	"context"
 	"encoding/json"
-	"fmt"
+	"github.com/pkg/errors"
 )
 
 type UserLoginParams struct {
@@ -16,16 +17,16 @@ type UserLoginResponse struct {
 	Data   string `json:"data"`
 }
 
-func (dc *DifyClient) UserLogin(email string, password string) (result UserLoginResponse, err error) {
+func (cl *Client) UserLogin(ctx context.Context, email string, password string) (result UserLoginResponse, err error) {
 	var payload = UserLoginParams{
 		Email:      email,
 		Password:   password,
 		RememberMe: true,
 	}
 
-	api := dc.GetConsoleAPI(CONSOLE_API_LOGIN)
+	api := cl.GetConsoleAPI(ConsoleApiLogin)
 
-	code, body, err := SendPostRequestToConsole(dc, api, payload)
+	code, body, err := cl.sendPostRequestToConsole(ctx, api, payload)
 
 	err = CommonRiskForSendRequest(code, err)
 	if err != nil {
@@ -34,7 +35,7 @@ func (dc *DifyClient) UserLogin(email string, password string) (result UserLogin
 
 	err = json.Unmarshal(body, &result)
 	if err != nil {
-		return result, fmt.Errorf("failed to unmarshal the response: %v", err)
+		return result, errors.Wrap(err, "failed to unmarshal the response")
 	}
 
 	return result, nil

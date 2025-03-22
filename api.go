@@ -3,52 +3,52 @@ package dify
 import "strings"
 
 const (
-	API_COMPLETION_MESSAGES      = "/completion-messages"
-	API_COMPLETION_MESSAGES_STOP = "/completion-messages/:task_id/stop"
+	ApiCompletionMessages     = "/completion-messages"
+	ApiCompletionMessagesStop = "/completion-messages/:task_id/stop"
 
-	API_CHAT_MESSAGES      = "/chat-messages"
-	API_CHAT_MESSAGES_STOP = "/chat-messages/:task_id/stop"
+	ApiChatMessages     = "/chat-messages"
+	ApiChatMessagesStop = "/chat-messages/:task_id/stop"
 
-	API_MESSAGES           = "/messages"
-	API_MESSAGES_SUGGESTED = "/messages/:message_id/suggested"
-	API_MESSAGES_FEEDBACKS = "/messages/:message_id/feedbacks"
+	ApiMessages          = "/messages"
+	ApiMessagesSuggested = "/messages/:message_id/suggested"
+	ApiMessagesFeedbacks = "/messages/:message_id/feedbacks"
 
-	API_CONVERSATIONS        = "/conversations"
-	API_CONVERSATIONS_DELETE = "/conversations/:conversation_id"
-	API_CONVERSATIONS_RENAME = "/conversations/:conversation_id/name"
+	ApiConversations       = "/conversations"
+	ApiConversationsDelete = "/conversations/:conversation_id"
+	ApiConversationsRename = "/conversations/:conversation_id/name"
 
-	API_FILE_UPLOAD = "/files/upload"
-	API_PARAMETERS  = "/parameters"
-	API_META        = "/meta"
+	ApiFileUpload = "/files/upload"
+	ApiParameters = "/parameters"
+	ApiMeta       = "/meta"
 
-	API_AUDIO_TO_TEXT = "/audio-to-text"
-	API_TEXT_TO_AUDIO = "/text-to-audio"
+	ApiAudioToText = "/audio-to-text"
+	ApiTextToAudio = "/text-to-audio"
 
-	API_PARAM_TASK_ID         = ":task_id"
-	API_PARAM_MESSAGE_ID      = ":message_id"
-	API_PARAM_CONVERSATION_ID = ":conversation_id"
+	ApiParamTaskId         = ":task_id"
+	ApiParamMessageId      = ":message_id"
+	ApiParamConversationId = ":conversation_id"
 
-	CONSOLE_API_FILE_UPLOAD = "/files/upload?source=datasets"
-	CONSOLE_API_LOGIN       = "/login"
+	ConsoleApiFileUpload = "/files/upload?source=datasets"
+	ConsoleApiLogin      = "/login"
 
-	CONSOLE_API_PARAM_DATASETS_ID = ":datasets_id"
+	ConsoleApiParamDatasetsId = ":datasets_id"
 
-	CONSOLE_API_DATASETS_CREATE      = "/datasets"
-	CONSOLE_API_DATASETS_LIST        = "/datasets"
-	CONSOLE_API_DATASETS_DELETE      = "/datasets/:datasets_id"
-	CONSOLE_API_DATASETS_INIT        = "/datasets/init"
-	CONSOLE_API_DATASETS_INIT_STATUS = "/datasets/:datasets_id/indexing-status"
+	ConsoleApiDatasetsCreate     = "/datasets"
+	ConsoleApiDatasetsList       = "/datasets"
+	ConsoleApiDatasetsDelete     = "/datasets/:datasets_id"
+	ConsoleApiDatasetsInit       = "/datasets/init"
+	ConsoleApiDatasetsInitStatus = "/datasets/:datasets_id/indexing-status"
 
-	CONSOLE_API_WORKSPACES_RERANK_MODEL        = "/workspaces/current/models/model-types/rerank"
-	CONSOLE_API_CURRENT_WORKSPACE_RERANK_MODEL = "/workspaces/current/default-model?model_type=rerank"
+	ConsoleApiWorkspacesRerankModel       = "/workspaces/current/models/model-types/rerank"
+	ConsoleApiCurrentWorkspaceRerankModel = "/workspaces/current/default-model?model_type=rerank"
 )
 
-func (dc *DifyClient) GetAPI(api string) string {
-	return dc.Host + api
+func (cl *Client) GetAPI(api string) string {
+	return cl.Host + api
 }
 
-func (dc *DifyClient) GetConsoleAPI(api string) string {
-	return dc.ConsoleHost + api
+func (cl *Client) GetConsoleAPI(api string) string {
+	return cl.ConsoleHost + api
 }
 
 func UpdateAPIParam(api, key, value string) string {
